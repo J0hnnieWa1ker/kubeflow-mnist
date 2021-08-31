@@ -6,7 +6,6 @@ Install the Conda environment:
 
 ```sh
 conda env create -f environment.yml
-
 ```
 
 Then run training:
