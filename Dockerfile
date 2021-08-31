@@ -1,12 +1,8 @@
-# example on how to build docker:
-# DOCKER_BUILDKIT=1 docker build -t bdcavanau/kubeflow-mnist . -f Dockerfile
-# DOCKER_BUILDKIT=1 docker build --no-cache -t dcavanau/kubeflow-mnist env -f Dockerfile
-
-# example on how to run:
-# docker run -it dcavanau/kubeflow-mnist /bin/bash
-
-FROM  tensorflow/tensorflow:2.2.3-gpu-py3
+FROM  tensorflow/tensorflow:2.2.3-gpu-py3 AS TensorFlow
 LABEL MAINTAINER "David Cavanaugh <dcavanau@us.ibm.com>"
+
+ENV KF_VERSION 1.2.0
+
 SHELL ["/bin/bash", "-c"]
 
 # Set the locale
@@ -57,3 +53,39 @@ RUN /opt/conda/bin/activate kubeflow-mnist
 
 # Set the new Allocator
 ENV LD_PRELOAD /usr/lib/x86_64-linux-gnu/libtcmalloc.so.4
+
+# Install kfctl
+RUN wget https://github.com/kubeflow/kfctl/releases/download/v${KF_VERSION}/kfctl_v${KF_VERSION}-0-gbc038f9_linux.tar.gz && \
+    tar -xvf kfctl_v${KF_VERSION}-0-gbc038f9_linux.tar.gz && \
+    mv ./kfctl /usr/local/bin/ && \
+    rm kfctl_v${KF_VERSION}-0-gbc038f9_linux.tar.gz && \
+    kfctl version 
+
+# Copy python files
+COPY *.py .
+
+# Pre-process
+RUN python preprocessing.py --data_dir=/root/data 
+# Train
+RUN python train.py --data_dir=/root/data 
+
+# path from /workspace/kubeflow-mnist/output.txt 
+RUN export MNIST_PATH=$(cat /workspace/kubeflow-mnist/output.txt) && \
+    tar -czvf kubeflow-mnist.tar.gz $MNIST_PATH
+
+# if the zip needs the folder name
+#    export MNIST_FOLDER=$(echo $MNIST_PATH | tr "/" "\n" | grep [0-9]) && \
+#    tar -czvf kubeflow-mnist-${MNIST_FOLDER}.tar.gz $MNIST_PATH
+
+# curl tar to artfactory
+
+# https://jfrog.com/knowledge-base/how-do-i-deploy-large-files-to-artifactory/
+# curl -X PUT -u myUser:myPassword -T test.txt "http://localhost:8081/artifactory/libs-release-local/test/test.txt"
+
+# Push newly created folder to IEAM 
+# Tar contents of /workspace dir --> removes need to know folder name
+# output.txt has the file path for the new version
+# folder is name of gihub repo
+# 
+# hzn command
+# hzn mms publish ...
