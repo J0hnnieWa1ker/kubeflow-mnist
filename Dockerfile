@@ -71,7 +71,8 @@ RUN python train.py --data_dir=/root/data
 
 # path from /workspace/kubeflow-mnist/output.txt 
 RUN export MNIST_PATH=$(cat /workspace/kubeflow-mnist/output.txt) && \
-    tar -czvf kubeflow-mnist.tar.gz $MNIST_PATH
+    tar -czvf kubeflow-mnist.tar.gz $MNIST_PATH && \
+    curl -u ${ARTIFACTORY_USER}:${ARTIFACTORY_ENCRYPT} -T /source/tmp/kubeflow-mnist.tar.gz "$(ARTIFACTORY_URL)/artifactory/generic-local/kubeflow-mnist.tar.gz"
 
 # if the zip needs the folder name
 #    export MNIST_FOLDER=$(echo $MNIST_PATH | tr "/" "\n" | grep [0-9]) && \
